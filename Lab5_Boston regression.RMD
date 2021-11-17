@@ -1,0 +1,197 @@
+---
+title: "Lab 5. Boston housing case"
+author: "DSO 530 - Tuan Tran"
+date: "10/6/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Multiple Linear Regression Model
+
+```{r}
+library(MASS)
+library(ISLR2)
+```
+
+The `ISLR2` library contains the `Boston`  data set, which
+records `medv` (median house value) for $506$ census tracts in Boston. We will seek to predict `medv` using $12$ predictors such as `rmvar` (average number of  rooms per house), `age` (average age of houses), and `lstat` (percent of households with low socioeconomic status).
+To find out more about the data set, we can type `?Boston`.
+
+```{r}
+boston <- Boston
+
+head(boston)
+
+```
+
+
+@. Let's build the multiple linear regression model. Use the following predictor variables: `lstat`, `dis`, `rm`, `nox`, `crim`. Check the scatterplots and comment on the patterns. Suggest variable transformations based on your visual inspection.
+
+```{r}
+
+attach(boston)
+
+colnames(boston)
+```
+
+
+```{r}
+plot(log(lstat),medv)
+```
+
+First I tried plot $lstat$ & $medv$ without transforming anything and I realized linear wasn't super clear if x value is small so I tried transformed $lstat$ with $log$ and quite happy about the new result. The pattern seems clear because the data is spreading out towards the right a little bit
+
+```{r}
+plot(dis,medv)
+```
+
+When it comes to $dis$, the model seems less linear as the x varibale increase from 3 onwards. The linear effect wasn't as visible. So I tried transform with $log$ and square the $dis$ variable. Squaring the variable doesn't help or in fact it makes the linear effect disappear while $log$ transform help to spread the data. Even though the linear wasn't a stepp line but it's clearer so I decided to keep $log(dis)$
+
+```{r}
+plot(rm,medv)
+
+```
+
+With $rm$, there seems to be a linear pattern but the data also centered around the value of $x=6$so I also tried transform $rm$ to see if it can improve but it doesn't with $log$ or $square$ or $^3$. In fact the data keep centering around 1 value point of x somehow so I keep rm as it is
+
+```{r}
+plot(nox,medv)
+```
+
+With $nox$, it seems to be negative linear but the effect wasn't super clear as at ont point of x value, there's multiple corresponding value of y so I looks like a straight line. So I transformed $nox$ but there's no transformation help eliminating such effect or doesn't improve much, so I kept $nox$ as it is
+
+```{r}
+plot(log(crim),medv)
+```
+
+
+Finally, if we plot $crim$ & $medv$, there's almost no linear effect so I have to transform the variable somehow. So by $log$, the data seems to spread out more and there seems to be a negative linear effect while squaring or power by 3 seems to makes the linear effect even less visible, so I kept $log(crim)$ 
+
+@. Build the multiple linear regression model to predict the median value of owner-occupied homes `medv` using the results of the previous step (use the transformed variables if needed).
+
+```{r}
+boston.mlm <- lm( medv ~ log(lstat) + log(dis) + rm + nox + log(crim), data= boston)
+```
+
+@. Perform the test for the regression effect. Is the effect significant?
+
+```{r}
+summary(boston.mlm)
+
+```
+The effect of the test is significant since when we look at our $F-statistic$, we an tell that $p-value$ is very small, so there's at least one variable that makes the regresstion effect real
+
+@. If yes, what are the significant predictor variables? Run the appropriate test and comment on your results.
+
+```{r}
+summary(boston.mlm)
+```
+
+We should look at $p-value$ of all variables for this test. All the variables are statistically significant including the intercept at different significant level. Except for $log(crim)$ which is statistically significant at the alpha level of 0.01, the rest of the predictors are significant at the highest alpha level. But in general, the linear effect is real at all predictors 
+
+@. Is there multicollinearity problem? Compute the VIF, explore the scatterplots, and the correlation matrix. Comment on your findings. Would you suggest removing variables if any?
+
+```{r}
+
+boston.new <- boston[, c(1,5,6,8,12,13)]
+
+boston.log <-boston.new
+
+boston.log[,c(1,4,5)] <- log(boston.log[,c(1,4,5)])
+
+cor(boston.log)
+
+library(car)
+vif(boston.mlm)
+plot(boston.mlm, which=2)
+
+pairs(boston.log)
+
+```
+
+Using summary() command, we can see that the except for the variable $rm$, every other variables' coefficient correlation are negative but when we checked the correlation matrix, beside $rm$, there's also $dis$ positively correlated with the $medv$, so this is a problem in our current model so this means the further the home to the center of the city, the higher the median home values is which doesn't sound so rational as usually, the further the home to the city center, the less expensive it is
+
+Additionally, it seems like $dis$ strongly and negatively correlate with $log(crim)$, $nox$, $log(lstat)$. 
+
+Besides, $log(logstat)$ almost strongly correlate with every other variables in the model. 
+
+$nox$ strongly correlate with $log(crim)$, $log(dis)$ & $log(crim$ strongly correlate with $log(dis)$ 
+
+Running the variance inflation factor or $vif$ function, except for $rm$ whose vif value is less than 2, almost every other variables will cause us troubles because the VIF value is larger than one with $nox$,$log(dis)$, $log(crim)$ are then top 3 strongest. This tell us the standard errors are inflated a lot because of the correlation between the variables in our model
+
+In short, the assumption that our variables are independent are not met. I would say consider only keep $rm$ and maybe $log(lstat)$
+
+@. Are the other assumptions met? Run the appropriate diagnostics. (assumptions: all variables are independent, we need the linear pattern => residuals should be independent identically distributed normal with constant spread. Distribution normal, any left effect, residuals are independent? )
+
+```{r}
+
+plot(boston.mlm)
+acf(boston.mlm$residuals)
+
+```
+
+
+Normality wise, the residuals is pretty normal even though it's not super ideal since towards the right end, there's some point outside of the 2 point z-score. The spread wasn't super constant and varied a lot between -10 and 10. It's large because the median value of homes are in $1000.
+
+Looking at ACF chart, it looks like there's a left pattern from 0-5 and the variability is larger and out the dash confidence level. From 10-15, it seems like there's also an seasonal pattern there we can't explain in this residuals. 
+
+In conclusion, the model assumption wasn't met since the spread of the residuals are large and not constant and it seems like there's still some pattern or effect we can't explain
+
+@. Re-run your analysis implementing the findings in the previous steps. Did the model improve. Include your comments.
+
+```{r}
+
+boston.mlm.1 <-lm( medv ~ log(dis) + rm + nox + log(crim), data= boston)
+
+summary(boston.mlm.1)
+
+plot(boston.mlm.1)
+acf(boston.mlm.1$residuals)
+
+#drop log(lstat)
+
+boston.mlm.2 <- lm( medv ~ log(lstat) + rm , data= boston)
+summary(boston.mlm.2)
+
+#drop log(dis), nox, log(crim)
+
+plot(boston.mlm.2)
+acf(boston.mlm.2$residuals)
+
+```
+
+Looking at the $adjusted R square$ of the original model, we can tell that this model explained `r round(100*summary(boston.mlm)$adj.r.squared,2)` percent of the variable
+
+From the observation of the variance inflation factor, I will try running 2 new models. First I tried removing $log(stat)$ because this variables seems to correlate with almost every others variables in our model. But based on the result of VIF, we did expect that this model doesn't improve a lot because their VIF value of $nox$,$log(dis)$, $log(crim)$ are larger than three
+
+After that, I will tried remove other variables that also seems like having correlation between each others and keeps $log(stat)$ & $rm$ instead
+
+Looking at the $adjusted R square$ of the model 1 when remove $log (lstat)$, we can tell that this model explained `r round(100*summary(boston.mlm.1)$adj.r.squared,2)` percent of the variable
+
+So removing the $log(lstat)$ the Adjusted R squared of the model reduced a lot (almost 20%) while it doesn't improve the much as much besides this models also make $nox$ & $log(crim)$ not statistically significant. In fact, when I check the ACF chart, it seems like it makes the effect between redisuals even stronger so this doesn't seems like a good model or a good option to remove $log(lstat)$ to improve our current model
+
+Looking at the $adjusted R square$ of the model 2 when on ly $log(lstat)$ & $rm$, we can tell that this model explained `r round(100*summary(boston.mlm.2)$adj.r.squared, 2)` percent of the variables
+
+This model also reduced the adjusted R squared compared to the previous models but not a lot (73% vs 70%). The model assumption wasn't met either but looking at the acf chart, it seems like this models reduced the effect between residuals as we looking at the ACF chart, the effect between residuals between point 10-15 reduces with just a little bit out of the dash confidence interval.  
+
+@. Compare nested model
+
+Consider the full model, and the 2 new models. I called it m1 vs nested model m2. Perform ANOVA test to compare nested models
+
+```{r}
+anova (boston.mlm, boston.mlm.1)
+anova (boston.mlm, boston.mlm.2)
+
+```
+
+Both model we conducted did improve the result and statisically better than the original model
+
+
