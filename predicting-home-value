@@ -1,6 +1,6 @@
 ---
-title: "Lab 5. Boston housing case"
-author: "DSO 530 - Tuan Tran"
+title: "Boston housing case"
+author: "Tuan Tran"
 date: "10/6/2021"
 output:
   html_document: default
@@ -21,8 +21,7 @@ library(MASS)
 library(ISLR2)
 ```
 
-The `ISLR2` library contains the `Boston`  data set, which
-records `medv` (median house value) for $506$ census tracts in Boston. We will seek to predict `medv` using $12$ predictors such as `rmvar` (average number of  rooms per house), `age` (average age of houses), and `lstat` (percent of households with low socioeconomic status).
+The `Boston`  data set contains records `medv` (median house value) for $506$ census tracts in Boston. We will seek to predict `medv` using $12$ predictors such as `rmvar` (average number of  rooms per house), `age` (average age of houses), and `lstat` (percent of households with low socioeconomic status).
 To find out more about the data set, we can type `?Boston`.
 
 ```{r}
@@ -31,48 +30,32 @@ boston <- Boston
 head(boston)
 
 ```
-
-
 @. Let's build the multiple linear regression model. Use the following predictor variables: `lstat`, `dis`, `rm`, `nox`, `crim`. Check the scatterplots and comment on the patterns. Suggest variable transformations based on your visual inspection.
 
 ```{r}
-
 attach(boston)
-
 colnames(boston)
 ```
-
-
 ```{r}
 plot(log(lstat),medv)
 ```
-
 First I tried plot $lstat$ & $medv$ without transforming anything and I realized linear wasn't super clear if x value is small so I tried transformed $lstat$ with $log$ and quite happy about the new result. The pattern seems clear because the data is spreading out towards the right a little bit
 
 ```{r}
 plot(dis,medv)
 ```
-
 When it comes to $dis$, the model seems less linear as the x varibale increase from 3 onwards. The linear effect wasn't as visible. So I tried transform with $log$ and square the $dis$ variable. Squaring the variable doesn't help or in fact it makes the linear effect disappear while $log$ transform help to spread the data. Even though the linear wasn't a stepp line but it's clearer so I decided to keep $log(dis)$
-
 ```{r}
 plot(rm,medv)
-
 ```
-
 With $rm$, there seems to be a linear pattern but the data also centered around the value of $x=6$so I also tried transform $rm$ to see if it can improve but it doesn't with $log$ or $square$ or $^3$. In fact the data keep centering around 1 value point of x somehow so I keep rm as it is
-
 ```{r}
 plot(nox,medv)
 ```
-
 With $nox$, it seems to be negative linear but the effect wasn't super clear as at ont point of x value, there's multiple corresponding value of y so I looks like a straight line. So I transformed $nox$ but there's no transformation help eliminating such effect or doesn't improve much, so I kept $nox$ as it is
-
 ```{r}
 plot(log(crim),medv)
 ```
-
-
 Finally, if we plot $crim$ & $medv$, there's almost no linear effect so I have to transform the variable somehow. So by $log$, the data seems to spread out more and there seems to be a negative linear effect while squaring or power by 3 seems to makes the linear effect even less visible, so I kept $log(crim)$ 
 
 @. Build the multiple linear regression model to predict the median value of owner-occupied homes `medv` using the results of the previous step (use the transformed variables if needed).
@@ -100,13 +83,9 @@ We should look at $p-value$ of all variables for this test. All the variables ar
 @. Is there multicollinearity problem? Compute the VIF, explore the scatterplots, and the correlation matrix. Comment on your findings. Would you suggest removing variables if any?
 
 ```{r}
-
 boston.new <- boston[, c(1,5,6,8,12,13)]
-
 boston.log <-boston.new
-
 boston.log[,c(1,4,5)] <- log(boston.log[,c(1,4,5)])
-
 cor(boston.log)
 
 library(car)
@@ -132,13 +111,10 @@ In short, the assumption that our variables are independent are not met. I would
 @. Are the other assumptions met? Run the appropriate diagnostics. (assumptions: all variables are independent, we need the linear pattern => residuals should be independent identically distributed normal with constant spread. Distribution normal, any left effect, residuals are independent? )
 
 ```{r}
-
 plot(boston.mlm)
 acf(boston.mlm$residuals)
 
 ```
-
-
 Normality wise, the residuals is pretty normal even though it's not super ideal since towards the right end, there's some point outside of the 2 point z-score. The spread wasn't super constant and varied a lot between -10 and 10. It's large because the median value of homes are in $1000.
 
 Looking at ACF chart, it looks like there's a left pattern from 0-5 and the variability is larger and out the dash confidence level. From 10-15, it seems like there's also an seasonal pattern there we can't explain in this residuals. 
@@ -148,21 +124,14 @@ In conclusion, the model assumption wasn't met since the spread of the residuals
 @. Re-run your analysis implementing the findings in the previous steps. Did the model improve. Include your comments.
 
 ```{r}
-
 boston.mlm.1 <-lm( medv ~ log(dis) + rm + nox + log(crim), data= boston)
-
 summary(boston.mlm.1)
-
 plot(boston.mlm.1)
 acf(boston.mlm.1$residuals)
-
 #drop log(lstat)
-
 boston.mlm.2 <- lm( medv ~ log(lstat) + rm , data= boston)
 summary(boston.mlm.2)
-
 #drop log(dis), nox, log(crim)
-
 plot(boston.mlm.2)
 acf(boston.mlm.2$residuals)
 
